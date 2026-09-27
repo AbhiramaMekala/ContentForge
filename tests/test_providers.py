@@ -107,6 +107,14 @@ class ProviderTests(unittest.TestCase):
         result = StabilityImageProvider("st-test", client=client_for(handler)).generate_image("a cat", "1792x1024")
         self.assertEqual(result.image_bytes, b"\x89PNG stability")
 
+    def test_dated_model_names_are_priced(self):
+        from contentforge.tracking import text_cost
+
+        # APIs report snapshot names; they must use the alias's price, not the shorter gpt-4o's.
+        self.assertAlmostEqual(text_cost("gpt-4o-mini-2024-07-18", 1_000_000, 0), 0.15)
+        self.assertAlmostEqual(text_cost("claude-haiku-4-5-20251001", 1_000_000, 0), 1.00)
+        self.assertEqual(text_cost("some-unknown-model", 1_000_000, 1_000_000), 0.0)
+
     def test_http_errors_become_provider_errors(self):
         handler = lambda request: httpx.Response(401, json={"error": "bad key"})  # noqa: E731
         with self.assertRaises(ProviderError) as ctx:

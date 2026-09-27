@@ -34,8 +34,20 @@ IMAGE_PRICES: dict[str, float] = {
 }
 
 
+def _text_price(model: str) -> tuple[float, float]:
+    """Exact match, else the longest matching prefix.
+
+    APIs often report a dated snapshot (e.g. "gpt-4o-mini-2024-07-18") rather
+    than the alias we asked for, so "gpt-4o-mini" must still find its price.
+    """
+    if model in TEXT_PRICES:
+        return TEXT_PRICES[model]
+    matches = [name for name in TEXT_PRICES if model.startswith(name)]
+    return TEXT_PRICES[max(matches, key=len)] if matches else (0.0, 0.0)
+
+
 def text_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    price_in, price_out = TEXT_PRICES.get(model, (0.0, 0.0))
+    price_in, price_out = _text_price(model)
     return (input_tokens * price_in + output_tokens * price_out) / 1_000_000
 
 
