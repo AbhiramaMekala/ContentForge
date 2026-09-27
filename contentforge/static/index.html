@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ContentForge Demo</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2230; --muted: #667085; --line: #e4e7ec;
+    --accent: #4f46e5; --accent-soft: #eef2ff; --ok: #12805c; --ok-soft: #e7f6ef;
+    --warn: #b54708; --warn-soft: #fef3e6; --bad: #b42318; --bad-soft: #fdecea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1218; --panel: #171b24; --ink: #e8eaf0; --muted: #98a2b3; --line: #2a303c;
+      --accent: #8b87ff; --accent-soft: #23234a; --ok: #4ad0a0; --ok-soft: #12302a;
+      --warn: #f5a35c; --warn-soft: #3a2a17; --bad: #ff8a80; --bad-soft: #3a1c1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 18px 28px; border-bottom: 1px solid var(--line); background: var(--panel);
+           display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 20px; margin: 0; }
+  header .tag { color: var(--muted); font-size: 14px; }
+  header .status { margin-left: auto; font-size: 13px; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.info { background: var(--accent-soft); color: var(--accent); }
+  main { display: grid; grid-template-columns: 360px 1fr; gap: 20px; padding: 20px 28px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card + .card { margin-top: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+  input[type=text], textarea, select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); font: inherit; }
+  textarea { min-height: 70px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 500; margin-top: 12px; }
+  button.primary { width: 100%; margin-top: 18px; padding: 11px; border: 0; border-radius: 8px; background: var(--accent);
+    color: #fff; font: 600 15px inherit; cursor: pointer; }
+  button.primary:disabled { opacity: .6; cursor: wait; }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .examples button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px;
+    padding: 3px 10px; font-size: 12px; cursor: pointer; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  /* pipeline stepper */
+  .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  @media (max-width: 700px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+  .step { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--bg); min-height: 86px; }
+  .step .name { font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .step .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .step.done { border-color: var(--ok); }
+  .step.skipped { opacity: .55; }
+  .step.failed { border-color: var(--bad); }
+  .step.running { border-color: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 4px var(--accent-soft); } }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+  @media (max-width: 700px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .tile .v { font-size: 20px; font-weight: 700; }
+  .tile .l { font-size: 12px; color: var(--muted); }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: -4px 0 14px; flex-wrap: wrap; }
+  .tabs button { border: 0; background: none; color: var(--muted); padding: 8px 12px; font: 600 13px inherit; cursor: pointer;
+    border-bottom: 2px solid transparent; }
+  .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+  .compare > div { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .compare h3.label { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+  .content h2.title { font-size: 22px; margin: 0 0 6px; }
+  .content .summary { color: var(--muted); font-style: italic; }
+  .content h3 { font-size: 16px; margin: 16px 0 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .social { border: 1px solid var(--line); border-radius: 12px; padding: 14px; max-width: 520px; }
+  .social .who { font-weight: 700; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .social .cta { margin-top: 10px; font-weight: 600; color: var(--accent); }
+  .imgwrap img { width: 100%; max-width: 520px; border-radius: 10px; border: 1px solid var(--line); display: block; }
+  .imgwrap .prompt { color: var(--muted); font-size: 12px; margin-top: 8px; max-width: 520px; }
+  pre { background: var(--bg); padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 480px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .alert { border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+  .alert.bad { background: var(--bad-soft); color: var(--bad); }
+  .alert.warn { background: var(--warn-soft); color: var(--warn); }
+  .empty { color: var(--muted); text-align: center; padding: 40px 10px; }
+  ul.clean { margin: 6px 0 0; padding-left: 18px; }
+  .score { font-size: 32px; font-weight: 800; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ContentForge</h1>
+  <span class="tag">Draft → self-critique → refine, schema-validated JSON, and a matching image</span>
+  <span class="status" id="status">Checking server…</span>
+</header>
+
+<main>
+  <!-- ============ Left: the request form ============ -->
+  <section>
+    <div class="card">
+      <h2>1. Describe what you want</h2>
+      <label for="content_type">Content type</label>
+      <select id="content_type">
+        <option value="blog_post">Blog post</option>
+        <option value="social_post">Social media post</option>
+        <option value="product_description">Product description</option>
+      </select>
+
+      <label for="topic">Topic</label>
+      <textarea id="topic">Why New York City is adding more protected bike lanes</textarea>
+      <div class="examples" id="examples"></div>
+
+      <div class="row">
+        <div><label for="audience">Audience</label><input type="text" id="audience" value="city residents"></div>
+        <div><label for="tone">Tone</label><input type="text" id="tone" value="clear and friendly"></div>
+      </div>
+      <label for="extra">Extra instructions (optional)</label>
+      <input type="text" id="extra" placeholder="e.g. mention one real statistic">
+    </div>
+
+    <div class="card">
+      <h2>2. Pipeline settings</h2>
+      <div class="row">
+        <div>
+          <label for="provider">Text model</label>
+          <select id="provider">
+            <option value="auto">Auto</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Gemini</option>
+            <option value="mock">Mock (offline)</option>
+          </select>
+        </div>
+        <div>
+          <label for="template_version">Prompt version</label>
+          <select id="template_version"><option value="">Latest</option></select>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="refine" checked> Self-critique &amp; refine</label>
+      <div id="refine_opts">
+        <label for="refine_threshold">Refine when</label>
+        <select id="refine_threshold">
+          <option value="">Critique score is below 8 (default)</option>
+          <option value="10">Critique score is below 10 (strict)</option>
+          <option value="11">Always refine (best for demos)</option>
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" id="gen_image" checked> Generate an image</label>
+      <div id="image_opts">
+        <label for="image_provider">Image model</label>
+        <select id="image_provider">
+          <option value="auto">Auto</option>
+          <option value="openai">OpenAI (gpt-image-1)</option>
+          <option value="stability">Stability AI (diffusion)</option>
+          <option value="mock">Mock (offline)</option>
+        </select>
+      </div>
+      <button class="primary" id="go">Generate</button>
+      <div class="hint" id="hint">With a real model this takes about 20–60 seconds (3 text calls + 1 image).</div>
+    </div>
+  </section>
+
+  <!-- ============ Right: results ============ -->
+  <section>
+    <div class="card">
+      <h2>Pipeline</h2>
+      <div class="steps" id="steps"></div>
+      <div class="tiles" id="tiles"></div>
+    </div>
+
+    <div class="card">
+      <div class="tabs" id="tabs">
+        <button data-tab="final" class="active">Final content</button>
+        <button data-tab="compare">Draft vs final</button>
+        <button data-tab="critique">Critique</button>
+        <button data-tab="metrics">Cost &amp; latency</button>
+        <button data-tab="json">Raw JSON</button>
+      </div>
+      <div id="alerts"></div>
+      <div id="tab-final"><div class="empty">Fill in the form and press <b>Generate</b>.</div></div>
+      <div id="tab-compare" class="hidden"></div>
+      <div id="tab-critique" class="hidden"></div>
+      <div id="tab-metrics" class="hidden"></div>
+      <div id="tab-json" class="hidden"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const usd = (n) => !n ? "$0.00" : "$" + n.toFixed(n >= 0.01 ? 4 : 6);
+const ms = (n) => n >= 1000 ? (n / 1000).toFixed(1) + " s" : Math.round(n) + " ms";
+
+const EXAMPLES = {
+  blog_post: ["Why New York City is adding more protected bike lanes", "How small cafés can cut food waste", "A beginner's guide to index funds"],
+  social_post: ["Our student council is hosting a free career fair on Friday", "Launch of a reusable coffee cup subscription", "Tips for surviving finals week"],
+  product_description: ["Wireless noise-cancelling headphones with 40-hour battery", "Compact standing desk for small apartments", "Insulated steel water bottle, 750 ml"],
+};
+
+// ---------- setup ----------
+function renderExamples() {
+  const type = $("content_type").value;
+  $("examples").innerHTML = EXAMPLES[type].map((e) => `<button type="button">${esc(e)}</button>`).join("");
+  [...$("examples").children].forEach((b) => b.onclick = () => { $("topic").value = b.textContent; });
+}
+$("content_type").onchange = () => { renderExamples(); $("topic").value = EXAMPLES[$("content_type").value][0]; loadVersions(); };
+$("refine").onchange = () => $("refine_opts").classList.toggle("hidden", !$("refine").checked);
+$("gen_image").onchange = () => $("image_opts").classList.toggle("hidden", !$("gen_image").checked);
+
+let templates = [];
+async function loadVersions() {
+  const versions = templates.filter((t) => t.name === $("content_type").value).map((t) => t.version);
+  $("template_version").innerHTML = '<option value="">Latest</option>' + versions.map((v) => `<option>${v}</option>`).join("");
+}
+
+async function init() {
+  renderExamples();
+  renderSteps({});
+  try {
+    const health = await (await fetch("/health")).json();
+    const hasKey = health.configured_keys.openai;
+    const live = health.default_text_provider !== "mock" && (health.default_text_provider !== "auto" || hasKey);
+    $("status").innerHTML = live
+      ? `<span class="pill ok">Live · OpenAI key found</span>`
+      : `<span class="pill warn">Offline mock mode · no API key in .env</span>`;
+    templates = (await (await fetch("/templates")).json()).templates;
+    loadVersions();
+  } catch {
+    $("status").innerHTML = `<span class="pill bad">Server not reachable</span>`;
+  }
+}
+
+// ---------- pipeline stepper ----------
+const STEP_NAMES = [["draft", "Draft"], ["critique", "Critique"], ["refine", "Refine"], ["guardrails", "Guardrails"], ["image", "Image"]];
+
+function renderSteps(state) {
+  $("steps").innerHTML = STEP_NAMES.map(([key, label]) => {
+    const s = state[key] || { status: "idle", meta: "" };
+    const badge = { done: '<span class="pill ok">done</span>', skipped: '<span class="pill info">skipped</span>',
+      failed: '<span class="pill bad">failed</span>', running: '<span class="pill info">…</span>' }[s.status] || "";
+    return `<div class="step ${s.status}"><div class="name">${label} ${badge}</div><div class="meta">${s.meta || "&nbsp;"}</div></div>`;
+  }).join("");
+}
+
+function stepStateFrom(res, wantRefine, wantImage) {
+  const text = res.text;
+  const steps = res.metrics.steps;
+  const sum = (prefix) => steps.filter((s) => s.step.startsWith(prefix));
+  const describe = (list) => {
+    if (!list.length) return "";
+    const lat = list.reduce((a, s) => a + s.latency_ms, 0), cost = list.reduce((a, s) => a + s.cost_usd, 0);
+    const tok = list.reduce((a, s) => a + s.input_tokens + s.output_tokens, 0);
+    const repairs = list.length > 1 ? ` · ${list.length - 1} repair` : "";
+    return `${ms(lat)} · ${tok ? tok + " tok · " : ""}${usd(cost)}${repairs}`;
+  };
+  const state = {
+    draft: { status: "done", meta: describe(sum("draft")) },
+    critique: wantRefine ? { status: "done", meta: `score ${text.critique.score}/10 · ` + describe(sum("critique")) }
+                         : { status: "skipped", meta: "turned off" },
+    refine: text.refined ? { status: "done", meta: describe(sum("refine")) }
+                         : { status: "skipped", meta: wantRefine ? `score ${text.critique.score} met threshold` : "turned off" },
+    guardrails: { status: "done", meta: text.guardrail_flags.length ? `${text.guardrail_flags.length} redaction(s)` : "clean" },
+    image: !wantImage ? { status: "skipped", meta: "turned off" }
+         : res.image ? { status: "done", meta: describe(sum("image")) }
+         : { status: "failed", meta: "see message" },
+  };
+  return state;
+}
+
+// ---------- content rendering ----------
+function renderContent(type, c) {
+  if (type === "blog_post") {
+    return `<div class="content"><h2 class="title">${esc(c.title)}</h2><p class="summary">${esc(c.summary)}</p>
+      ${c.sections.map((s) => `<h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p>`).join("")}
+      <div class="chips">${c.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join("")}</div></div>`;
+  }
+  if (type === "social_post") {
+    return `<div class="content social"><div class="who">${esc(c.platform)}</div><div>${esc(c.text)}</div>
+      <div class="chips">${c.hashtags.map((h) => `<span class="chip">#${esc(h.replace(/^#/, ""))}</span>`).join("")}</div>
+      <div class="cta">${esc(c.call_to_action)}</div></div>`;
+  }
+  return `<div class="content"><div class="summary">${esc(c.product_name)}</div><h2 class="title">${esc(c.headline)}</h2>
+    <p>${esc(c.description)}</p><ul class="clean">${c.key_features.map((f) => `<li>${esc(f)}</li>`).join("")}</ul></div>`;
+}
+
+function renderImage(image) {
+  if (!image) return "";
+  return `<div class="imgwrap" style="margin-top:18px"><img src="${esc(image.image_url)}" alt="Generated image">
+    <div class="prompt"><b>Image prompt (written by the text model):</b> ${esc(image.prompt)} · ${esc(image.model)}</div></div>`;
+}
+
+function renderCritique(text) {
+  if (!text.critique) return `<div class="empty">Self-critique was turned off for this run.</div>`;
+  const c = text.critique;
+  return `<div class="score">${c.score}<span style="font-size:16px;color:var(--muted)">/10</span></div>
+    <p>${text.refined ? "The draft was rewritten using this feedback."
+                      : "The score met the threshold, so the draft was kept as is. Choose <b>Always refine</b> under Pipeline settings to force a rewrite."}</p>
+    <h3>Issues found</h3><ul class="clean">${c.issues.map((i) => `<li>${esc(i)}</li>`).join("") || "<li>None</li>"}</ul>
+    <h3>Suggestions</h3><ul class="clean">${c.suggestions.map((i) => `<li>${esc(i)}</li>`).join("") || "<li>None</li>"}</ul>`;
+}
+
+function renderMetrics(res, session) {
+  const rows = res.metrics.steps.map((s) => `<tr><td>${esc(s.step)}</td><td>${esc(s.provider)} / ${esc(s.model)}</td>
+    <td class="num">${s.input_tokens}</td><td class="num">${s.output_tokens}</td>
+    <td class="num">${ms(s.latency_ms)}</td><td class="num">${usd(s.cost_usd)}</td></tr>`).join("");
+  const tpl = res.text.templates.map((t) => `<span class="chip">${esc(t.name)} ${esc(t.version)} · ${esc(t.fingerprint)}</span>`).join("");
+  return `<table><thead><tr><th>Step</th><th>Provider / model</th><th class="num">In tok</th><th class="num">Out tok</th>
+    <th class="num">Latency</th><th class="num">Cost</th></tr></thead><tbody>${rows}</tbody></table>
+    <h3 style="font-size:14px;margin-top:18px">Prompt templates used</h3><div class="chips">${tpl}</div>
+    <h3 style="font-size:14px;margin-top:18px">This server session</h3>
+    <p>${session.runs} run(s) · ${session.model_calls} model calls · ${usd(session.total_cost_usd)} total · avg ${ms(session.avg_latency_ms)} per run</p>
+    <p class="hint">Costs are estimates from the price table in tracking.py.</p>`;
+}
+
+function renderTiles(res) {
+  const m = res.metrics;
+  const tiles = [[ms(m.total_latency_ms), "Total time"], [m.steps.length, "Model calls"],
+                 [(m.total_input_tokens + m.total_output_tokens).toLocaleString(), "Tokens"], [usd(m.total_cost_usd), "Est. cost"]];
+  $("tiles").innerHTML = tiles.map(([v, l]) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+}
+
+// ---------- tabs ----------
+$("tabs").onclick = (e) => {
+  const tab = e.target.dataset.tab; if (!tab) return;
+  [...$("tabs").children].forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  ["final", "compare", "critique", "metrics", "json"].forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== tab));
+};
+
+// ---------- run ----------
+$("go").onclick = async () => {
+  const wantRefine = $("refine").checked, wantImage = $("gen_image").checked;
+  const body = {
+    content_type: $("content_type").value, topic: $("topic").value.trim(),
+    audience: $("audience").value, tone: $("tone").value, extra_instructions: $("extra").value,
+    provider: $("provider").value, template_version: $("template_version").value || null,
+    refine: wantRefine, refine_threshold: $("refine_threshold").value ? Number($("refine_threshold").value) : null,
+    generate_image: wantImage, image_provider: $("image_provider").value,
+  };
+  $("go").disabled = true; $("alerts").innerHTML = ""; $("tiles").innerHTML = "";
+  ["compare", "critique", "metrics", "json"].forEach((t) => $("tab-" + t).innerHTML = "");
+  $("tab-final").innerHTML = `<div class="empty">Running the pipeline…</div>`;
+  const running = {};
+  STEP_NAMES.forEach(([k]) => running[k] = { status: "running", meta: "working…" });
+  if (!wantRefine) { running.critique = running.refine = { status: "skipped", meta: "turned off" }; }
+  if (!wantImage) running.image = { status: "skipped", meta: "turned off" };
+  renderSteps(running);
+  const started = Date.now();
+  const timer = setInterval(() => { $("go").textContent = `Generating… ${Math.round((Date.now() - started) / 1000)}s`; }, 500);
+
+  try {
+    const r = await fetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = await r.json();
+    if (!r.ok) {
+      const detail = typeof res.detail === "string" ? res.detail : JSON.stringify(res.detail ?? res);
+      const title = { guardrail: "Blocked by input guardrail", provider: "Model provider error",
+                      invalid_model_output: "Model output failed schema validation" }[res.error] || "Request failed";
+      $("alerts").innerHTML = `<div class="alert bad"><b>${title}:</b> ${esc(detail)}</div>`;
+      renderSteps({ draft: { status: "failed", meta: title } });
+      $("tab-final").innerHTML = `<div class="empty">Nothing was generated. See the message above.</div>`;
+      return;
+    }
+    const type = res.text.content_type;
+    renderSteps(stepStateFrom(res, wantRefine, wantImage));
+    renderTiles(res);
+    let alerts = "";
+    if (res.image_error) alerts += `<div class="alert warn"><b>Image step failed, text is still below:</b> ${esc(res.image_error)}</div>`;
+    if (res.text.guardrail_flags.length) alerts += `<div class="alert warn"><b>Output guardrails:</b> ${res.text.guardrail_flags.map(esc).join("; ")}</div>`;
+    $("alerts").innerHTML = alerts;
+
+    $("tab-final").innerHTML = renderContent(type, res.text.content) + renderImage(res.image);
+    $("tab-compare").innerHTML = res.text.refined
+      ? `<div class="compare"><div><h3 class="label">First draft</h3>${renderContent(type, res.text.draft)}</div>
+         <div><h3 class="label">After critique &amp; refine</h3>${renderContent(type, res.text.content)}</div></div>`
+      : `<div class="empty">No refine step ran this time (${wantRefine ? `the critique scored ${res.text.critique.score}/10, which met the threshold` : "refine was turned off"}), so the draft is the final version.<br>Set <b>Refine when</b> to <b>Always refine</b> and generate again to compare.</div>`;
+    $("tab-critique").innerHTML = renderCritique(res.text);
+    const session = await (await fetch("/metrics")).json();
+    $("tab-metrics").innerHTML = renderMetrics(res, session);
+    $("tab-json").innerHTML = `<p class="hint">Exactly what the API returned: every field is validated against a Pydantic schema.</p><pre>${esc(JSON.stringify(res, null, 2))}</pre>`;
+  } catch (err) {
+    $("alerts").innerHTML = `<div class="alert bad"><b>Could not reach the server:</b> ${esc(err.message)}. Is it still running?</div>`;
+    renderSteps({});
+  } finally {
+    clearInterval(timer); $("go").disabled = false; $("go").textContent = "Generate";
+  }
+};
+
+init();
+</script>
+</body>
+</html>
